@@ -1,5 +1,5 @@
 #!/bin/bash
-# ./request_cert.sh <Command_Name>
+# ./request_new_cert.sh <Command_Name>
 set -eu
 
 export VAULT_ADDR='http://127.0.0.1:8200'
@@ -15,9 +15,9 @@ CN=$1
 # Request a certificate from the Intermediate CA with the given CN
 pushd ${CERT_DIR} >/dev/null
 vault write --format=json pki_int/issue/mxie-dot-dev common_name="${CN}" ttl="24h" \
-            > ${CN}.creds.json
-cat ${CN}.creds.json | tee \
-  >(jq -r .data.certificate > ${CN}.crt) \
-  >(jq -r .data.private_key > ${CN}.key)
+            | tee \
+                >(jq -r .data.certificate > ${CN}.crt) \
+                >(jq -r .data.private_key > ${CN}.key) \
+                > ${CN}.creds.json
 openssl x509 -noout -text -in ${CN}.crt > ${CN}.crt.info
 popd >/dev/null

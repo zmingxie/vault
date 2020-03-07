@@ -46,7 +46,8 @@ vault write -format=json pki_int/intermediate/generate/internal \
 vault write -format=json pki/root/sign-intermediate csr=@Int_CA.csr \
         format=pem_bundle ttl="43800h" \
         | jq -r '.data.certificate' > Int_CA.crt
-vault write pki_int/intermediate/set-signed certificate=@Int_CA.crt
+awk '{print $0}' Int_CA.crt Root_CA.crt > CA_chain.pem
+vault write pki_int/intermediate/set-signed certificate=@CA_chain.pem
 openssl x509 -noout -text -in Int_CA.crt > Int_CA.crt.info
 
 # Create a Role that can issue certs with 1 year TTL
@@ -55,12 +56,11 @@ vault write pki_int/roles/"${PKI_INT_ROLE_NAME}" \
         allow_subdomains=true \
         max_ttl="8760h"
 
-# Generate CA and CRL chains
-awk '{print $0}' Root_CA.crt Int_CA.crt> CA_chain.pem
+# Generate CRL chains
 curl --silent ${VAULT_ADDR}/v1/pki/crl/pem > Root_CRL.pem
 curl --silent ${VAULT_ADDR}/v1/pki_int/crl/pem > Int_CRL.pem
-awk '{print $0}' Root_CRL.pem Int_CRL.pem > CRL_chain.pem
 openssl crl -inform PEM -text -noout -in Root_CRL.pem > Root_CRL.info
 openssl crl -inform PEM -text -noout -in Int_CRL.pem > Int_CRL.info
+awk '{print $0}' Int_CRL.pem Root_CRL.pem > CRL_chain.pem
 
 popd >/dev/null
